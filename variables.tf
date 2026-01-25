@@ -23,7 +23,7 @@ variable "twingate_image" {
 }
 
 variable "ecs_cluster_arn" {
-  type = string
+  type    = string
   default = ""
 }
 
