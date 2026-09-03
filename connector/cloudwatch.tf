@@ -10,11 +10,6 @@ resource "aws_cloudwatch_log_group" "this" {
   })
 }
 
-resource "aws_cloudwatch_log_stream" "this" {
-  name           = "/ecs/twingate/${twingate_connector.this.name}"
-  log_group_name = local.log_group_name
-}
-
 locals {
   log_group_name = var.log_group_name != "" ? var.log_group_name : aws_cloudwatch_log_group.this[0].name
 }

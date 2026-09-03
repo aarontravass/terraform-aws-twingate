@@ -1,10 +1,29 @@
+# The account subdomain -- "acme" for acme.twingate.com. This is what the
+# connector container's TWINGATE_NETWORK expects, and it is a different thing
+# from the remote network the connector attaches to.
 variable "twingate_network" {
-  sensitive   = true
-  description = "Twingate network"
+  type        = string
+  description = "Twingate account subdomain, without .twingate.com (e.g. \"acme\")"
+}
+
+variable "twingate_remote_network_id" {
+  type        = string
+  description = "Id of the Twingate remote network to attach the connector to. Set exactly one of this or twingate_remote_network_name."
+  default     = ""
+}
+
+variable "twingate_remote_network_name" {
+  type        = string
+  description = "Name of an existing Twingate remote network to attach the connector to. Set exactly one of this or twingate_remote_network_id."
+  default     = ""
+
+  validation {
+    condition     = (var.twingate_remote_network_id != "") != (var.twingate_remote_network_name != "")
+    error_message = "Set exactly one of twingate_remote_network_id or twingate_remote_network_name."
+  }
 }
 
 variable "tags" { type = map(string) }
-variable "env" { type = string }
 
 variable "twingate_image" {
   type    = string
@@ -12,7 +31,8 @@ variable "twingate_image" {
 }
 
 variable "ecs_cluster_arn" {
-  type = string
+  type        = string
+  description = "ARN of the ECS cluster the connector service runs in"
 }
 
 variable "private_subnet_ids" {

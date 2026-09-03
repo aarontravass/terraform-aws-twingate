@@ -20,4 +20,12 @@ resource "aws_ecs_service" "this" {
     create = "10m"
     update = "10m"
   }
+
+  # Without this the service can start a task before the execution role can read
+  # the token secret; wait_for_steady_state then burns the full create timeout.
+  depends_on = [
+    aws_iam_role_policy_attachment.ecs_task_execution_role,
+    aws_iam_role_policy_attachment.ecs_task_execution_role_read_secrets,
+    aws_iam_role_policy_attachment.ecs_task_role_read_secrets,
+  ]
 }

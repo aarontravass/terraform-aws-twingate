@@ -1,6 +1,19 @@
+# The account subdomain -- "acme" for acme.twingate.com. Distinct from the
+# remote network name below.
 variable "twingate_network" {
-  description = "Twingate network"
-  default     = ""
+  type        = string
+  description = "Twingate account subdomain, without .twingate.com (e.g. \"acme\")"
+}
+
+variable "remote_network_name" {
+  type        = string
+  description = "Name of the Twingate remote network the connectors attach to. Created when create_twingate_remote_network is true, otherwise looked up by this name."
+}
+
+variable "remote_network_location" {
+  type        = string
+  description = "Location reported for a remote network created by this module."
+  default     = "AWS"
 }
 
 variable "tags" { type = map(string) }
@@ -12,8 +25,9 @@ variable "twingate_image" {
 }
 
 variable "ecs_cluster_arn" {
-  type    = string
-  default = ""
+  type        = string
+  description = "ARN of an existing ECS cluster to run the connectors in. Leave empty to have this module create one."
+  default     = ""
 }
 
 variable "private_subnet_ids" {

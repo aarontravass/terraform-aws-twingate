@@ -1,0 +1,130 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+# Two pushes landing close together would otherwise both read the same "latest
+# tag" and race to create the same version. Releases are serialised instead.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive
+
+  validate:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The connector is usable on its own, so it is validated on its own.
+        # Validating only the root would leave it covered by accident.
+        dir:
+          - "."
+          - "connector"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Terraform init
+        run: terraform init -backend=false -input=false
+        working-directory: ${{ matrix.dir }}
+
+      - name: Terraform validate
+        run: terraform validate -no-color
+        working-directory: ${{ matrix.dir }}
+
+  tag:
+    needs: [fmt, validate]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history and tags, otherwise the latest version can't be read.
+          fetch-depth: 0
+
+      - name: Check whether HEAD is already tagged
+        id: check
+        run: |
+          set -euo pipefail
+          if git describe --exact-match --tags HEAD >/dev/null 2>&1; then
+            echo "Already tagged $(git describe --exact-match --tags HEAD); nothing to release."
+            echo "tagged=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "tagged=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Compute next version
+        id: version
+        if: steps.check.outputs.tagged == 'false'
+        run: |
+          set -euo pipefail
+
+          # mapfile rather than a pipe into head: under `set -o pipefail` a
+          # SIGPIPE from head would fail the step when many tags exist.
+          mapfile -t tags < <(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname)
+          latest="${tags[0]:-}"
+
+          if [ -z "$latest" ]; then
+            next="v0.1.0"
+            echo "No existing version tag; seeding at $next."
+          else
+            version="${latest#v}"
+            major="${version%%.*}"
+            rest="${version#*.}"
+            minor="${rest%%.*}"
+            patch="${rest#*.}"
+
+            # Default is a patch bump. Override from the commit message so a
+            # minor or major release does not need a hand-cut tag.
+            message="$(git log -1 --pretty=%B)"
+            case "$message" in
+              *'#major'*|*'BREAKING CHANGE'*)
+                major=$((major + 1)); minor=0; patch=0 ;;
+              *'#minor'*)
+                minor=$((minor + 1)); patch=0 ;;
+              *)
+                patch=$((patch + 1)) ;;
+            esac
+
+            next="v${major}.${minor}.${patch}"
+            echo "Latest tag $latest -> $next."
+          fi
+
+          echo "next=$next" >> "$GITHUB_OUTPUT"
+
+      - name: Create and push tag
+        if: steps.check.outputs.tagged == 'false'
+        env:
+          NEXT: ${{ steps.version.outputs.next }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$NEXT" -m "Release $NEXT"
+          git push origin "$NEXT"
+
+      - name: Create GitHub release
+        if: steps.check.outputs.tagged == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NEXT: ${{ steps.version.outputs.next }}
+        run: gh release create "$NEXT" --title "$NEXT" --generate-notes
