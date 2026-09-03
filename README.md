@@ -168,10 +168,23 @@ connectors coexist in one account and region without collision.
 
 ## Releases
 
-Every push to `main` runs fmt and validate — the root and `connector/`
-separately — and, if both pass, tags the commit and cuts a release. The bump is
-a patch by default; put `#minor` or `#major` (or `BREAKING CHANGE`) in the
-commit message to bump those instead. Pin to a tag rather than `main`.
+Every push to `main` runs fmt, validate and `terraform test` — the root and
+`connector/` separately — and, if all pass, tags the commit and cuts a release.
+Tagging uses [`anothrNick/github-tag-action`](https://github.com/anothrNick/github-tag-action),
+pinned by commit SHA.
+
+The bump is a patch by default. Include one of these in the commit message to
+change that:
+
+| Token | Effect |
+|---|---|
+| `#major` | `1.4.9` → `2.0.0` |
+| `#minor` | `1.4.9` → `1.5.0` |
+| `#patch` | `1.4.9` → `1.4.10` (the default) |
+| `#none` | No tag and no release for that commit |
+
+The first release is `v0.0.1` unless that commit carries `#minor`. Pin to a tag
+rather than to `main`.
 
 ## License
 

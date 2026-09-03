@@ -52,79 +52,38 @@ jobs:
         run: terraform validate -no-color
         working-directory: ${{ matrix.dir }}
 
+      # Providers are mocked, so no AWS or Twingate credentials are needed.
+      # A failure here blocks the tag job, so a broken commit never ships.
+      - name: Terraform test
+        run: terraform test -no-color
+        working-directory: ${{ matrix.dir }}
+
   tag:
     needs: [fmt, validate]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          # Full history and tags, otherwise the latest version can't be read.
+          # The action reads existing tags to work out the next version.
           fetch-depth: 0
 
-      - name: Check whether HEAD is already tagged
-        id: check
-        run: |
-          set -euo pipefail
-          if git describe --exact-match --tags HEAD >/dev/null 2>&1; then
-            echo "Already tagged $(git describe --exact-match --tags HEAD); nothing to release."
-            echo "tagged=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "tagged=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Compute next version
-        id: version
-        if: steps.check.outputs.tagged == 'false'
-        run: |
-          set -euo pipefail
-
-          # mapfile rather than a pipe into head: under `set -o pipefail` a
-          # SIGPIPE from head would fail the step when many tags exist.
-          mapfile -t tags < <(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname)
-          latest="${tags[0]:-}"
-
-          if [ -z "$latest" ]; then
-            next="v0.1.0"
-            echo "No existing version tag; seeding at $next."
-          else
-            version="${latest#v}"
-            major="${version%%.*}"
-            rest="${version#*.}"
-            minor="${rest%%.*}"
-            patch="${rest#*.}"
-
-            # Default is a patch bump. Override from the commit message so a
-            # minor or major release does not need a hand-cut tag.
-            message="$(git log -1 --pretty=%B)"
-            case "$message" in
-              *'#major'*|*'BREAKING CHANGE'*)
-                major=$((major + 1)); minor=0; patch=0 ;;
-              *'#minor'*)
-                minor=$((minor + 1)); patch=0 ;;
-              *)
-                patch=$((patch + 1)) ;;
-            esac
-
-            next="v${major}.${minor}.${patch}"
-            echo "Latest tag $latest -> $next."
-          fi
-
-          echo "next=$next" >> "$GITHUB_OUTPUT"
-
-      - name: Create and push tag
-        if: steps.check.outputs.tagged == 'false'
+      - name: Bump version and push tag
+        id: tag
+        # anothrNick/github-tag-action 1.75.0, pinned by commit rather than by
+        # the mutable release tag. Bumps patch by default; #major, #minor,
+        # #patch or #none in the commit message override that. It is a no-op
+        # when HEAD already carries a tag, so re-runs are safe.
+        uses: anothrNick/github-tag-action@4ed44965e0db8dab2b466a16da04aec3cc312fd8
         env:
-          NEXT: ${{ steps.version.outputs.next }}
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "$NEXT" -m "Release $NEXT"
-          git push origin "$NEXT"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEFAULT_BUMP: patch
+          WITH_V: true
+          RELEASE_BRANCHES: main
+          INITIAL_VERSION: 0.0.0
 
       - name: Create GitHub release
-        if: steps.check.outputs.tagged == 'false'
+        if: steps.tag.outputs.new_tag != ''
         env:
           GH_TOKEN: ${{ github.token }}
-          NEXT: ${{ steps.version.outputs.next }}
-        run: gh release create "$NEXT" --title "$NEXT" --generate-notes
+          NEW_TAG: ${{ steps.tag.outputs.new_tag }}
+        run: gh release create "$NEW_TAG" --title "$NEW_TAG" --generate-notes
