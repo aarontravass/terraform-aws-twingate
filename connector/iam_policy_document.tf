@@ -19,11 +19,8 @@ data "aws_iam_policy_document" "ecr" {
 
 data "aws_iam_policy_document" "read_secrets_policy" {
   statement {
-    resources = [
-      aws_secretsmanager_secret.this.arn,
-      aws_secretsmanager_secret.datadog.arn
-    ]
-    actions = ["secretsmanager:GetSecretValue"]
+    resources = [aws_secretsmanager_secret.this.arn]
+    actions   = ["secretsmanager:GetSecretValue"]
   }
   depends_on = [aws_secretsmanager_secret.this]
 }
