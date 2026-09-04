@@ -36,7 +36,7 @@ jobs:
         # Validating only the root would leave it covered by accident.
         dir:
           - "."
-          - "connector"
+          - "modules/connector"
     steps:
       - uses: actions/checkout@v4
 

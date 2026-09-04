@@ -69,4 +69,4 @@ run "unknown_remote_network_id_does_not_break_the_plan" {
 # create_twingate_remote_network = false is not covered here. That path sends
 # the connector down the by-name lookup, and a mocked data source yields a null
 # id, which the provider rejects as a missing required attribute before any mock
-# value is substituted. See connector/tests/validation.tftest.hcl.
+# value is substituted. See modules/connector/tests/validation.tftest.hcl.
