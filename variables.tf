@@ -10,12 +10,6 @@ variable "remote_network_name" {
   description = "Name of the Twingate remote network the connectors attach to. Created when create_twingate_remote_network is true, otherwise looked up by this name."
 }
 
-variable "remote_network_location" {
-  type        = string
-  description = "Location reported for a remote network created by this module."
-  default     = "AWS"
-}
-
 variable "tags" { type = map(string) }
 variable "env" { type = string }
 
