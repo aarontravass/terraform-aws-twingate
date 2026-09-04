@@ -52,8 +52,24 @@ jobs:
         run: terraform test -no-color
         working-directory: ${{ matrix.dir }}
 
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Fails when a README's generated block no longer matches the .tf files,
+      # which is how remote_network_location stayed documented after removal.
+      - name: terraform-docs is up to date
+        uses: terraform-docs/gh-actions@v1.4.1
+        with:
+          working-dir: .,modules/connector
+          config-file: .terraform-docs.yml
+          output-file: README.md
+          output-method: inject
+          fail-on-diff: true
+
   comment:
-    needs: [fmt, test]
+    needs: [fmt, test, docs]
     # Runs whether the checks passed or failed -- reporting a failure is the
     # case that matters. Job results are read from `needs`, so no step-level
     # continue-on-error juggling is required, and a failed check still turns
@@ -65,6 +81,7 @@ jobs:
         env:
           FMT_RESULT: ${{ needs.fmt.result }}
           TEST_RESULT: ${{ needs.test.result }}
+          DOCS_RESULT: ${{ needs.docs.result }}
         with:
           script: |
             const icon = (r) =>
@@ -73,12 +90,14 @@ jobs:
 
             const fmt = process.env.FMT_RESULT;
             const test = process.env.TEST_RESULT;
+            const docs = process.env.DOCS_RESULT;
 
             const body = [
               '## Terraform CI',
               '',
               `${icon(fmt)} **Format** — \`terraform fmt -check -recursive\` — \`${fmt}\``,
-              `${icon(test)} **Validate and test** — root and \`connector/\` — \`${test}\``,
+              `${icon(test)} **Validate and test** — root and \`modules/connector\` — \`${test}\``,
+              `${icon(docs)} **Docs** — terraform-docs up to date — \`${docs}\``,
             ].join('\n');
 
             await github.rest.issues.createComment({

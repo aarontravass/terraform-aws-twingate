@@ -58,8 +58,24 @@ jobs:
         run: terraform test -no-color
         working-directory: ${{ matrix.dir }}
 
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Fails when a README's generated block no longer matches the .tf files,
+      # which is how remote_network_location stayed documented after removal.
+      - name: terraform-docs is up to date
+        uses: terraform-docs/gh-actions@v1.4.1
+        with:
+          working-dir: .,modules/connector
+          config-file: .terraform-docs.yml
+          output-file: README.md
+          output-method: inject
+          fail-on-diff: true
+
   tag:
-    needs: [fmt, validate]
+    needs: [fmt, validate, docs]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

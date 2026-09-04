@@ -1,0 +1,29 @@
+formatter: markdown table
+
+# Injected between the BEGIN_TF_DOCS / END_TF_DOCS markers already present in
+# each README, so the hand-written prose around them is preserved.
+output:
+  file: README.md
+  mode: inject
+
+sort:
+  enabled: true
+  by: required
+
+settings:
+  anchor: false
+  default: true
+  description: true
+  escape: true
+  html: false
+  indent: 2
+  required: true
+  type: true
+
+sections:
+  hide:
+    # Terraform version and provider constraints are documented in prose, with
+    # the security-group module noted alongside them.
+    - header
+    - footer
+    - providers

@@ -23,24 +23,30 @@ variable "twingate_remote_network_name" {
   }
 }
 
-variable "tags" { type = map(string) }
+variable "tags" {
+  type        = map(string)
+  description = "Tags applied to every resource this module creates."
+}
 
 variable "twingate_image" {
-  type    = string
-  default = "twingate/connector:1.83"
+  type        = string
+  description = "Connector container image."
+  default     = "twingate/connector:1.83"
 }
 
 variable "ecs_cluster_arn" {
   type        = string
-  description = "ARN of the ECS cluster the connector service runs in"
+  description = "ARN of the ECS cluster the connector service runs in. Must already have the FARGATE capacity provider associated."
 }
 
 variable "private_subnet_ids" {
-  type = list(string)
+  type        = list(string)
+  description = "Subnets the connector task runs in. Must have egress to the internet, since connectors are outbound-only."
 }
 
 variable "vpc_id" {
-  type = string
+  type        = string
+  description = "VPC the connector's security group is created in."
 }
 
 variable "log_group_name" {

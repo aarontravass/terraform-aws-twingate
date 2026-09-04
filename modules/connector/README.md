@@ -62,39 +62,68 @@ associated, or ECS rejects the service.
 **Twingate credentials.** The provider needs `api_token` and `network`,
 configured by the caller or via `TWINGATE_API_TOKEN` / `TWINGATE_NETWORK`.
 
+<!-- BEGIN_TF_DOCS -->
 ## Requirements
 
 | Name | Version |
-|---|---|
+| ---- | ------- |
 | terraform | >= 1.10 |
-| hashicorp/aws | >= 6.0 |
-| Twingate/twingate | 3.6.0 |
-| terraform-aws-modules/security-group/aws | ~> 6.0 |
+| aws | >= 6.0 |
+| twingate | 3.6.0 |
+
+## Modules
+
+| Name | Source | Version |
+| ---- | ------ | ------- |
+| this | terraform-aws-modules/security-group/aws | ~> 6.0 |
+
+## Resources
+
+| Name | Type |
+| ---- | ---- |
+| [aws_cloudwatch_log_group.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_log_group) | resource |
+| [aws_ecs_service.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ecs_service) | resource |
+| [aws_ecs_task_definition.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ecs_task_definition) | resource |
+| [aws_iam_policy.read_secrets_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy) | resource |
+| [aws_iam_role.ecs_task_execution_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
+| [aws_iam_role.ecs_task_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
+| [aws_iam_role_policy_attachment.ecs_task_execution_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
+| [aws_iam_role_policy_attachment.ecs_task_execution_role_read_secrets](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
+| [aws_iam_role_policy_attachment.ecs_task_role_read_secrets](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
+| [aws_secretsmanager_secret.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret) | resource |
+| [aws_secretsmanager_secret_version.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret_version) | resource |
+| [twingate_connector.this](https://registry.terraform.io/providers/Twingate/twingate/3.6.0/docs/resources/connector) | resource |
+| [twingate_connector_tokens.this](https://registry.terraform.io/providers/Twingate/twingate/3.6.0/docs/resources/connector_tokens) | resource |
+| [aws_iam_policy_document.ecs_assume_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
+| [aws_iam_policy_document.read_secrets_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
+| [aws_region.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/region) | data source |
+| [twingate_remote_network.this](https://registry.terraform.io/providers/Twingate/twingate/3.6.0/docs/data-sources/remote_network) | data source |
 
 ## Inputs
 
-| Name | Type | Default | Description |
-|---|---|---|---|
-| `twingate_network` | `string` | — | Account subdomain, without `.twingate.com`. |
-| `twingate_remote_network_id` | `string` | `""` | Remote network to attach to, by id. |
-| `twingate_remote_network_name` | `string` | `""` | Remote network to attach to, by name. |
-| `ecs_cluster_arn` | `string` | — | Cluster to run in. Must have `FARGATE` associated. |
-| `vpc_id` | `string` | — | VPC for the connector's security group. |
-| `private_subnet_ids` | `list(string)` | — | Subnets for the task. Must have egress to the internet. |
-| `log_group_name` | `string` | `""` | Existing log group. Empty creates one per connector. |
-| `log_retention_in_days` | `number` | `30` | Retention for a created log group. Ignored otherwise. |
-| `twingate_image` | `string` | `"twingate/connector:1.83"` | Connector image. |
-| `tags` | `map(string)` | — | Tags applied to every resource. |
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| ecs\_cluster\_arn | ARN of the ECS cluster the connector service runs in. Must already have the FARGATE capacity provider associated. | `string` | n/a | yes |
+| private\_subnet\_ids | Subnets the connector task runs in. Must have egress to the internet, since connectors are outbound-only. | `list(string)` | n/a | yes |
+| tags | Tags applied to every resource this module creates. | `map(string)` | n/a | yes |
+| twingate\_network | Twingate account subdomain, without .twingate.com (e.g. "acme") | `string` | n/a | yes |
+| vpc\_id | VPC the connector's security group is created in. | `string` | n/a | yes |
+| log\_group\_name | Name of an existing CloudWatch log group to write connector task logs to. Leave empty to have the module create one per connector. | `string` | `""` | no |
+| log\_retention\_in\_days | Retention for the log group created when log\_group\_name is empty. Ignored otherwise. | `number` | `30` | no |
+| twingate\_image | Connector container image. | `string` | `"twingate/connector:1.83"` | no |
+| twingate\_remote\_network\_id | Id of the Twingate remote network to attach the connector to. Set exactly one of this or twingate\_remote\_network\_name. | `string` | `""` | no |
+| twingate\_remote\_network\_name | Name of an existing Twingate remote network to attach the connector to. Set exactly one of this or twingate\_remote\_network\_id. | `string` | `""` | no |
 
 ## Outputs
 
 | Name | Description |
-|---|---|
-| `connector_name` | Twingate-generated connector name. |
-| `ecs_service_name` | ECS service name. |
-| `security_group_id` | Security group created for the task. |
-| `log_group_name` | Log group in use, created or supplied. |
-| `task_definition_arn` | ARN of the current task definition revision. |
+| ---- | ----------- |
+| connector\_name | Twingate-generated connector name. Every AWS resource this module creates is named from it. |
+| ecs\_service\_name | ECS service name. |
+| log\_group\_name | Log group the task writes to, whether created here or supplied. |
+| security\_group\_id | Id of the egress-only security group created for the task. |
+| task\_definition\_arn | ARN of the current task definition revision. |
+<!-- END_TF_DOCS -->
 
 ## What it creates
 
