@@ -2,6 +2,8 @@
 
 Runs [Twingate](https://www.twingate.com) connectors on AWS ECS Fargate.
 
+[![Terraform Registry](https://img.shields.io/badge/terraform-registry-7B42BC?logo=terraform)](https://registry.terraform.io/modules/aarontravass/twingate/aws/latest)
+
 Each connector is a single Fargate task that dials out to Twingate — no inbound
 ports, no load balancer, no public IP. Connector tokens are issued through the
 Twingate provider, written to Secrets Manager, and injected into the task at
@@ -11,7 +13,7 @@ runtime, so they never appear in the task definition or in plan output.
 
 The repository ships two things that can be used separately:
 
-| | What it is |
+| Path | What it is |
 |---|---|
 | **root** | A complete stack: log group, ECS cluster, a Twingate remote network, and `connector_count` connectors. |
 | **`modules/connector/`** | One connector. Takes an existing VPC, subnets and cluster and creates everything else per connector. |
@@ -32,7 +34,7 @@ provider "twingate" {
 }
 
 module "twingate" {
-  source  = "app.terraform.io/aarontravass/twingate/aws"
+  source  = "aarontravass/twingate/aws"
   version = "0.2.0"
 
   twingate_network    = "acme"
@@ -51,7 +53,7 @@ module "twingate" {
 
 ```hcl
 module "connector" {
-  source  = "app.terraform.io/aarontravass/twingate/aws//modules/connector"
+  source  = "aarontravass/twingate/aws//modules/connector"
   version = "0.2.0"
 
   twingate_network             = "acme"
@@ -98,64 +100,53 @@ does not touch your cluster's capacity providers — the cluster must already ha
 configured by the caller (or via `TWINGATE_API_TOKEN` / `TWINGATE_NETWORK`). The
 API token needs permission to create connectors and read remote networks.
 
+<!-- BEGIN_TF_DOCS -->
 ## Requirements
 
-| | Version |
-|---|---|
+| Name | Version |
+| ---- | ------- |
 | terraform | >= 1.10 |
-| hashicorp/aws | >= 6.0 |
-| Twingate/twingate | 3.6.0 |
+| aws | >= 6.0 |
+| twingate | 3.6.0 |
 
-`modules/connector/` also uses `terraform-aws-modules/security-group/aws ~> 6.0`.
+## Modules
 
-## Root inputs
+| Name | Source | Version |
+| ---- | ------ | ------- |
+| connector | ./modules/connector | n/a |
 
-| Name | Type | Default | Description |
-|---|---|---|---|
-| `twingate_network` | `string` | — | Account subdomain, without `.twingate.com`. |
-| `remote_network_name` | `string` | — | Remote network to create or look up. |
-| `remote_network_location` | `string` | `"AWS"` | Location reported for a created remote network. |
-| `create_twingate_remote_network` | `bool` | `true` | Create the remote network, or attach to an existing one by name. |
-| `connector_count` | `number` | `2` | Connectors to run. Twingate recommends at least two per remote network. |
-| `vpc_id` | `string` | — | VPC the connectors run in. |
-| `private_subnet_ids` | `list(string)` | — | Subnets for the tasks. Must have egress to the internet. |
-| `ecs_cluster_arn` | `string` | `""` | Existing cluster to use. Empty creates one. |
-| `twingate_image` | `string` | `"twingate/connector:1.83"` | Connector image. |
-| `env` | `string` | — | Environment name; disambiguates the cluster and log group. |
-| `tags` | `map(string)` | — | Tags applied to every resource. |
+## Resources
 
-## Root outputs
+| Name | Type |
+| ---- | ---- |
+| [aws_cloudwatch_log_group.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_log_group) | resource |
+| [aws_ecs_cluster.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ecs_cluster) | resource |
+| [aws_ecs_cluster_capacity_providers.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ecs_cluster_capacity_providers) | resource |
+| [twingate_remote_network.this](https://registry.terraform.io/providers/Twingate/twingate/3.6.0/docs/resources/remote_network) | resource |
 
-| Name | Description |
-|---|---|
-| `connector_names` | Twingate-generated name of each connector. |
-| `ecs_service_names` | ECS service name of each connector. |
-| `remote_network_id` | Remote network id; empty when the stack did not create one. |
+## Inputs
 
-## `modules/connector/` inputs
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| env | Environment name. Disambiguates the cluster and log group so the module can be used more than once per account and region. | `string` | n/a | yes |
+| private\_subnet\_ids | Subnets the connector tasks run in. Must have egress to the internet, since connectors are outbound-only. | `list(string)` | n/a | yes |
+| remote\_network\_name | Name of the Twingate remote network the connectors attach to. Created when create\_twingate\_remote\_network is true, otherwise looked up by this name. | `string` | n/a | yes |
+| tags | Tags applied to every resource this module creates. | `map(string)` | n/a | yes |
+| twingate\_network | Twingate account subdomain, without .twingate.com (e.g. "acme") | `string` | n/a | yes |
+| vpc\_id | VPC the connectors run in. | `string` | n/a | yes |
+| connector\_count | Number of connectors to run. Twingate recommends at least two per remote network so one can be replaced without dropping the tunnel. | `number` | `2` | no |
+| create\_twingate\_remote\_network | Create the remote network. Set false to attach to one that already exists, looked up by remote\_network\_name. | `bool` | `true` | no |
+| ecs\_cluster\_arn | ARN of an existing ECS cluster to run the connectors in. Leave empty to have this module create one. | `string` | `""` | no |
+| twingate\_image | Connector container image. | `string` | `"twingate/connector:1.83"` | no |
 
-| Name | Type | Default | Description |
-|---|---|---|---|
-| `twingate_network` | `string` | — | Account subdomain, without `.twingate.com`. |
-| `twingate_remote_network_id` | `string` | `""` | Remote network to attach to, by id. |
-| `twingate_remote_network_name` | `string` | `""` | Remote network to attach to, by name. |
-| `ecs_cluster_arn` | `string` | — | Cluster to run in. Must have `FARGATE` associated. |
-| `vpc_id` | `string` | — | VPC for the connector's security group. |
-| `private_subnet_ids` | `list(string)` | — | Subnets for the task. Must have egress to the internet. |
-| `log_group_name` | `string` | `""` | Existing log group. Empty creates one per connector. |
-| `log_retention_in_days` | `number` | `30` | Retention for a created log group. Ignored otherwise. |
-| `twingate_image` | `string` | `"twingate/connector:1.83"` | Connector image. |
-| `tags` | `map(string)` | — | Tags applied to every resource. |
-
-## `modules/connector/` outputs
+## Outputs
 
 | Name | Description |
-|---|---|
-| `connector_name` | Twingate-generated connector name. |
-| `ecs_service_name` | ECS service name. |
-| `security_group_id` | Security group created for the task. |
-| `log_group_name` | Log group in use, created or supplied. |
-| `task_definition_arn` | ARN of the current task definition revision. |
+| ---- | ----------- |
+| connector\_names | Twingate-generated name of each connector. |
+| ecs\_service\_names | ECS service name of each connector. |
+| remote\_network\_id | Id of the remote network the connectors attach to; empty when this stack did not create one. |
+<!-- END_TF_DOCS -->
 
 ## What a connector creates
 
