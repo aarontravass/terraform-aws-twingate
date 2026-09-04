@@ -14,10 +14,10 @@ The repository ships two things that can be used separately:
 | | What it is |
 |---|---|
 | **root** | A complete stack: log group, ECS cluster, a Twingate remote network, and `connector_count` connectors. |
-| **`connector/`** | One connector. Takes an existing VPC, subnets and cluster and creates everything else per connector. |
+| **`modules/connector/`** | One connector. Takes an existing VPC, subnets and cluster and creates everything else per connector. |
 
 Use the root module to stand the whole thing up in an account that has none of
-it. Use `connector/` on its own when you already own a cluster and want to add
+it. Use `modules/connector/` on its own when you already own a cluster and want
 connectors to it, or when connectors are managed separately from the shared
 infrastructure they run on.
 
@@ -32,7 +32,8 @@ provider "twingate" {
 }
 
 module "twingate" {
-  source = "github.com/aarontravass/terraform-aws-twingate?ref=v0.1.0"
+  source  = "app.terraform.io/aarontravass/twingate/aws"
+  version = "0.2.0"
 
   twingate_network    = "acme"
   remote_network_name = "acme-aws-us-east-2"
@@ -50,7 +51,8 @@ module "twingate" {
 
 ```hcl
 module "connector" {
-  source = "github.com/aarontravass/terraform-aws-twingate//connector?ref=v0.1.0"
+  source  = "app.terraform.io/aarontravass/twingate/aws//modules/connector"
+  version = "0.2.0"
 
   twingate_network             = "acme"
   twingate_remote_network_name = "acme-aws-us-east-2"
@@ -74,7 +76,7 @@ These are two different values and the module keeps them apart:
   the connector attaches to. Named freely (`acme-aws-us-east-2`) and unrelated to
   the subdomain.
 
-In `connector/`, set exactly one of `twingate_remote_network_id` or
+In `modules/connector/`, set exactly one of `twingate_remote_network_id` or
 `twingate_remote_network_name`; setting both or neither is a validation error.
 Prefer the id when the network is created in the same apply — it gives Terraform
 a dependency edge that a name lookup cannot.
@@ -104,7 +106,7 @@ API token needs permission to create connectors and read remote networks.
 | hashicorp/aws | >= 6.0 |
 | Twingate/twingate | 3.6.0 |
 
-`connector/` also uses `terraform-aws-modules/security-group/aws ~> 6.0`.
+`modules/connector/` also uses `terraform-aws-modules/security-group/aws ~> 6.0`.
 
 ## Root inputs
 
@@ -130,7 +132,7 @@ API token needs permission to create connectors and read remote networks.
 | `ecs_service_names` | ECS service name of each connector. |
 | `remote_network_id` | Remote network id; empty when the stack did not create one. |
 
-## `connector/` inputs
+## `modules/connector/` inputs
 
 | Name | Type | Default | Description |
 |---|---|---|---|
@@ -145,7 +147,7 @@ API token needs permission to create connectors and read remote networks.
 | `twingate_image` | `string` | `"twingate/connector:1.83"` | Connector image. |
 | `tags` | `map(string)` | — | Tags applied to every resource. |
 
-## `connector/` outputs
+## `modules/connector/` outputs
 
 | Name | Description |
 |---|---|
@@ -169,7 +171,7 @@ connectors coexist in one account and region without collision.
 ## Releases
 
 Every push to `main` runs fmt, validate and `terraform test` — the root and
-`connector/` separately — and, if all pass, tags the commit and cuts a release.
+`modules/connector/` separately — and, if all pass, tags the commit and cuts a release.
 Tagging uses [`anothrNick/github-tag-action`](https://github.com/anothrNick/github-tag-action),
 pinned by commit SHA.
 

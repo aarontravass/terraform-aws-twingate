@@ -31,7 +31,7 @@ jobs:
         # Running only at the root would cover it by accident.
         dir:
           - "."
-          - "connector"
+          - "modules/connector"
     steps:
       - uses: actions/checkout@v4
 

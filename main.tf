@@ -1,6 +1,6 @@
 module "connector" {
   count  = var.connector_count
-  source = "./connector"
+  source = "./modules/connector"
 
   vpc_id             = var.vpc_id
   ecs_cluster_arn    = var.ecs_cluster_arn != "" ? var.ecs_cluster_arn : aws_ecs_cluster.this[0].arn
