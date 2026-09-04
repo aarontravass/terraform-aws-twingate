@@ -15,7 +15,7 @@ the [parent module](../../README.md) instead, which wraps this one.
 
 ```hcl
 module "connector" {
-  source  = "app.terraform.io/aarontravass/twingate/aws//modules/connector"
+  source  = "aarontravass/twingate/aws//modules/connector"
   version = "0.2.0"
 
   twingate_network             = "acme" # acme.twingate.com
@@ -64,7 +64,7 @@ configured by the caller or via `TWINGATE_API_TOKEN` / `TWINGATE_NETWORK`.
 
 ## Requirements
 
-| | Version |
+| Name | Version |
 |---|---|
 | terraform | >= 1.10 |
 | hashicorp/aws | >= 6.0 |

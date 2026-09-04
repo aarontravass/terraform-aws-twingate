@@ -2,6 +2,8 @@
 
 Runs [Twingate](https://www.twingate.com) connectors on AWS ECS Fargate.
 
+[![Terraform Registry](https://img.shields.io/badge/terraform-registry-7B42BC?logo=terraform)](https://registry.terraform.io/modules/aarontravass/twingate/aws/latest)
+
 Each connector is a single Fargate task that dials out to Twingate — no inbound
 ports, no load balancer, no public IP. Connector tokens are issued through the
 Twingate provider, written to Secrets Manager, and injected into the task at
@@ -11,7 +13,7 @@ runtime, so they never appear in the task definition or in plan output.
 
 The repository ships two things that can be used separately:
 
-| | What it is |
+| Path | What it is |
 |---|---|
 | **root** | A complete stack: log group, ECS cluster, a Twingate remote network, and `connector_count` connectors. |
 | **`modules/connector/`** | One connector. Takes an existing VPC, subnets and cluster and creates everything else per connector. |
@@ -32,7 +34,7 @@ provider "twingate" {
 }
 
 module "twingate" {
-  source  = "app.terraform.io/aarontravass/twingate/aws"
+  source  = "aarontravass/twingate/aws"
   version = "0.2.0"
 
   twingate_network    = "acme"
@@ -51,7 +53,7 @@ module "twingate" {
 
 ```hcl
 module "connector" {
-  source  = "app.terraform.io/aarontravass/twingate/aws//modules/connector"
+  source  = "aarontravass/twingate/aws//modules/connector"
   version = "0.2.0"
 
   twingate_network             = "acme"
@@ -100,7 +102,7 @@ API token needs permission to create connectors and read remote networks.
 
 ## Requirements
 
-| | Version |
+| Name | Version |
 |---|---|
 | terraform | >= 1.10 |
 | hashicorp/aws | >= 6.0 |
@@ -114,7 +116,6 @@ API token needs permission to create connectors and read remote networks.
 |---|---|---|---|
 | `twingate_network` | `string` | — | Account subdomain, without `.twingate.com`. |
 | `remote_network_name` | `string` | — | Remote network to create or look up. |
-| `remote_network_location` | `string` | `"AWS"` | Location reported for a created remote network. |
 | `create_twingate_remote_network` | `bool` | `true` | Create the remote network, or attach to an existing one by name. |
 | `connector_count` | `number` | `2` | Connectors to run. Twingate recommends at least two per remote network. |
 | `vpc_id` | `string` | — | VPC the connectors run in. |
